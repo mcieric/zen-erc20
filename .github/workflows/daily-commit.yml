@@ -1,0 +1,19 @@
+name: Daily Commit (crypto repo)
+on:
+  schedule:
+    - cron: "0 7 * * *"   # 07:00 UTC (~09:00 FR)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "Build log $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> build-log.md
+          git config user.name "mcieric"
+          git config user.email "mcieric13@gmail.com"
+          git add build-log.md
+          git commit -m "chore: daily build log" || echo "no changes"
+          git push
