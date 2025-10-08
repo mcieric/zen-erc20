@@ -1,0 +1,89 @@
+name: Multi-Repo Activity (staggered)
+
+on:
+  schedule:
+    - cron: "0 6 * * *"    # 06:00 UTC
+    - cron: "17 11 * * *"  # 11:17 UTC
+    - cron: "42 15 * * *"  # 15:42 UTC
+    - cron: "5 20 * * *"   # 20:05 UTC
+    - cron: "33 1 * * *"   # 01:33 UTC (nuit)
+  workflow_dispatch:
+
+permissions:
+  contents: read  # push via PAT secret
+
+concurrency:
+  group: multi-activity-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: [
+          "mcieric/zen-erc20",
+          "mcieric/zen-daily"
+          # ajoute ici d'autres repos si tu veux
+        ]
+        branch: ["main"]
+    steps:
+      - name: Clone ${{ matrix.repo }}
+        run: |
+          git clone https://x-access-token:${{ secrets.MULTI_REPO_TOKEN }}@github.com/${{ matrix.repo }}.git target
+
+      - name: Two commits with jitter + rebase/retries
+        run: |
+          set -e
+          cd target
+          git config user.name  "mcieric"
+          git config user.email "mcieric13@gmail.com"
+
+          mkdir -p logs
+          test -f logs/build-log.md || echo "# Build log" > logs/build-log.md
+          test -f logs/daily.md     || echo "# Daily log" > logs/daily.md
+
+          # petite attente aléatoire 0–120s pour décaler les horloges
+          JITTER=$((RANDOM % 121))
+          echo "Jitter start: ${JITTER}s"
+          sleep "${JITTER}"
+
+          do_push () {
+            FILE="$1"
+            MSG="$2"
+            for i in 1 2 3; do
+              echo "Attempt $i on ${{ matrix.repo }} -> ${FILE}"
+
+              # récupère dernier état + rebase local
+              git fetch origin
+              git checkout ${{ matrix.branch }}
+              git pull --rebase --autostash origin ${{ matrix.branch }} || true
+
+              # append ligne horodatée
+              echo "${MSG} $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${FILE}"
+              git add "${FILE}"
+              git commit -m "chore: ${MSG} [skip ci]" || echo "no changes"
+
+              if git push --force-with-lease origin ${{ matrix.branch }}; then
+                echo "Push OK for ${FILE}"
+                return 0
+              fi
+
+              echo "Push rejected; retry in $((i*5))s…"
+              sleep $((i*5))
+            done
+            echo "Push failed for ${FILE}"
+            return 1
+          }
+
+          # 1er commit
+          do_push logs/build-log.md "build log" || true
+
+          # attente aléatoire 20–80s entre les 2 commits
+          GAP=$((20 + RANDOM % 61))
+          echo "Gap between commits: ${GAP}s"
+          sleep "${GAP}"
+
+          # 2e commit (fichier différent pour faire 2 commits/jour)
+          do_push logs/daily.md "daily update" || true
