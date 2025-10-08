@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # autorise le push via GITHUB_TOKEN
+  contents: write   # nécessaire pour git push
 
 jobs:
   run:
