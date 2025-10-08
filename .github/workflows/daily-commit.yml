@@ -1,39 +1,10 @@
-name: Daily Commit (crypto repo)
-
-on:
-  schedule:
-    - cron: "0 6 * * *"   # 06:00 UTC
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-concurrency:
-  group: daily-commit-${{ github.ref }}
-  cancel-in-progress: false
-
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Update build-log.md
+      - name: Commit & push (manual)
         run: |
-          test -f build-log.md || echo "# Build log" > build-log.md
-          echo "Build log $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> build-log.md
-
-      - name: Commit & push (handles pull/rebase)
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: daily build log [skip ci]"
-          file_pattern: build-log.md
-          commit_user_name: "mcieric"
-          commit_user_email: "mcieric13@gmail.com"
-          branch: main
-          pull_strategy: "--rebase --autostash"
-          push_options: "--force-with-lease"
+          git config user.name "mcieric"
+          git config user.email "mcieric13@gmail.com"
+          git add build-log.md
+          git commit -m "chore: daily build log [skip ci]" || echo "no changes"
+          # rebase sur la branche distante si quelqu'un a poussé entre-temps
+          git fetch origin
+          git pull --rebase --autostash origin main || true
+          git push --force-with-lease
