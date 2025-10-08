@@ -6,24 +6,30 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # nécessaire pour git push
+  contents: write  # indispensable pour pousser un commit
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (with credentials)
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
-      - name: Update daily.md
-        run: echo "Update $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> daily.md
-
-      - name: Commit
+      - name: Update/create daily.md
         run: |
-          git config user.name "mcieric"
-          git config user.email "mcieric13@gmail.com"
-          git add daily.md
-          git commit -m "chore: daily update [skip ci]" || echo "No changes"
+          set -e
+          test -f daily.md || echo "# Daily log" > daily.md
+          echo "Update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> daily.md
 
-      - name: Push
-        run: git push
+      # Action fiable qui gère add/commit/push sans échouer si rien à committer
+      - name: Commit & push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: daily update [skip ci]"
+          file_pattern: daily.md
+          commit_user_name: "mcieric"
+          commit_user_email: "mcieric13@gmail.com"
+          branch: ${{ github.ref_name }}
