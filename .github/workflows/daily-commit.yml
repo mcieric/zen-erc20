@@ -1,19 +1,29 @@
-name: Daily Commit (crypto repo)
+name: Daily Commit
+
 on:
   schedule:
-    - cron: "0 7 * * *"   # 07:00 UTC (~09:00 FR)
+    - cron: "0 6 * * *"   # tous les jours 06:00 UTC
   workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: write   # autorise le push via GITHUB_TOKEN
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: |
-          echo "Build log $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> build-log.md
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update daily.md
+        run: echo "Update $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> daily.md
+
+      - name: Commit
+        run: |
           git config user.name "mcieric"
           git config user.email "mcieric13@gmail.com"
-          git add build-log.md
-          git commit -m "chore: daily build log" || echo "no changes"
-          git push
+          git add daily.md
+          git commit -m "chore: daily update [skip ci]" || echo "No changes"
+
+      - name: Push
+        run: git push
