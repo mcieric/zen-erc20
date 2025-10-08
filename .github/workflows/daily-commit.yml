@@ -6,30 +6,27 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # indispensable pour pousser un commit
+  contents: write
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (with credentials)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
           fetch-depth: 0
 
-      - name: Update/create daily.md
+      - name: Update daily.md
         run: |
-          set -e
-          test -f daily.md || echo "# Daily log" > daily.md
           echo "Update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> daily.md
 
-      # Action fiable qui gère add/commit/push sans échouer si rien à committer
-      - name: Commit & push
+      - name: Commit & Push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: daily update [skip ci]"
           file_pattern: daily.md
           commit_user_name: "mcieric"
           commit_user_email: "mcieric13@gmail.com"
-          branch: ${{ github.ref_name }}
+          branch: main
+          push_options: '--force-with-lease'
