@@ -1,5 +1,5 @@
 # Team Contributors
 
-- Zen (mcieric)
+- Zeneric
 - JessimLr
 - MoGlobekiffers
